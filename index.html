@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Offline Vehicle Auction Display</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #D68F12;
+    --gold-light: #F5C55A;
+    --gold-dim: #A86D00;
+    --bg-deep: #EBEEF4;
+    --bg-panel: #FFFFFF;
+    --bg-card: #F4F6F9;
+    --bg-card2: #EBEEF4;
+    --border: rgba(10, 12, 16, 0.1);
+    --border-gold: rgba(214, 143, 18, 0.3);
+    --text-primary: #10141C;
+    --text-secondary: #4A5470;
+    --text-muted: #6B7897;
+    --red: #DF331B;
+    --red-dim: #FFE9E6;
+    --green: #25A558;
+    --green-dim: #0E6030;
+    --blue: #2D7DE0;
+    --accent: #D68F12;
+    --font-display: 'Poppins', sans-serif;
+    --font-body: 'Poppins', sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    overflow: hidden;
+  }
+
+  .screen {
+    width: 100vw; height: 100vh;
+    display: grid;
+    grid-template-rows: 80px auto 1fr 72px;
+    grid-template-columns: 1fr 440px;
+    grid-template-areas:
+      "header header"
+      "ribbon ribbon"
+      "image  details"
+      "footer footer";
+    gap: 0;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-gold);
+    position: relative;
+    z-index: 10;
+  }
+  .header-brand {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .brand-logo-img {
+    height: 64px;
+    object-fit: contain;
+  }
+  .header-center {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    text-align: center;
+  }
+  .lot-label {
+    font-family: var(--font-display);
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .lot-number {
+    font-family: var(--font-display);
+    font-size: 24px; font-weight: 800;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+  }
+  .header-right {
+    display: flex; align-items: center; gap: 28px;
+  }
+  .header-meta {
+    text-align: left;
+  }
+  .header-meta-label {
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .header-meta-value {
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .live-badge {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(37, 165, 88, 0.15);
+    border: 1px solid rgba(37, 165, 88, 0.4);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--green);
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .btn-action {
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px 16px; border-radius: 6px; border: none;
+    font-family: var(--font-display); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+    transition: 0.2s;
+  }
+  .btn-stop { background: rgba(223, 51, 27, 0.15); color: var(--red); border: 1px solid rgba(223, 51, 27, 0.4); }
+  .btn-stop:hover { background: var(--red); color: #fff; }
+  .btn-resume { background: rgba(37, 165, 88, 0.15); color: var(--green); border: 1px solid rgba(37, 165, 88, 0.4); }
+  .btn-resume:hover { background: var(--green); color: #fff; }
+
+  /* ── IMAGE PANEL ── */
+  .image-panel {
+    grid-area: image;
+    position: relative;
+    overflow: hidden;
+    background: #060810;
+  }
+  .vehicle-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.4s ease-out;
+    cursor: pointer;
+  }
+  .image-panel:hover .vehicle-img {
+    transform: scale(1.03);
+  }
+  .image-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+  }
+
+  /* Vehicle name watermark on image */
+  .vehicle-name-overlay {
+    position: absolute; bottom: 2rem; left: 2rem;
+    right: 2px;
+  }
+  .vehicle-name-main {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+  }
+  .vehicle-name-sub {
+    font-family: var(--font-display);
+    font-size: clamp(14px, 1.6vw, 22px);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #FFFFFF;
+    margin-top: 4px;
+    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Image thumbnails strip */
+  .thumb-strip {
+    position: absolute; bottom: 1.5rem; right: 1.5rem;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .thumb {
+    width: 62px; height: 44px;
+    border-radius: 5px;
+    background: var(--bg-card2);
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .thumb.active { border-color: var(--gold); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb-more {
+    width: 62px; height: 44px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 13px; font-weight: 700;
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.85);
+    cursor: pointer;
+  }
+
+  /* Reg plate badge */
+  .reg-plate {
+    position: absolute; top: 1.25rem; left: 1.25rem;
+    background: linear-gradient(145deg, #ffffff 0%, #e6e6e6 40%, #f2f2f2 80%, #d9d9d9 100%);
+    border: 3px solid #111111;
+    border-radius: 6px;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .reg-plate-number {
+    position: relative;
+    padding: 12px 24px;
+    font-family: 'Arial', var(--font-display);
+    font-size: 26px;
+    line-height: 1.1;
+    font-weight: 800;
+    color: #111111;
+    letter-spacing: 0.1em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+    background-image:
+      radial-gradient(circle at 12px 12px, #222 2px, #888 3px, transparent 3.5px),
+      radial-gradient(circle at calc(100% - 12px) 12px, #222 2px, #888 3px, transparent 3.5px),
+      radial-gradient(circle at 12px calc(100% - 12px), #222 2px, #888 3px, transparent 3.5px),
+      radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #222 2px, #888 3px, transparent 3.5px);
+  }
+
+    /* ── DETAILS PANEL ── */
+  .details-panel {
+    grid-area: details;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border-gold);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Price Tag Overlay on Image */
+  .price-tag-overlay {
+    position: absolute; top: 1.25rem; right: 1.25rem;
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+    box-shadow: 0 8px 24px rgba(214, 143, 18, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    padding: 12px 20px;
+    text-align: left;
+    z-index: 10;
+    width: 280px;
+  }
+  .price-tag-overlay.update-pulse {
+    animation: box-pulse 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .price-tag-label {
+    display: inline-block;
+    background: #0C2340;
+    color: var(--gold-light);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .price-tag-bid {
+    display: flex; align-items: baseline; justify-content: flex-start; gap: 4px;
+  }
+  .price-tag-currency {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 800;
+    color: #0C2340;
+  }
+  .price-tag-amount {
+    font-family: var(--font-display);
+    font-size: 40px; font-weight: 900;
+    color: #0C2340;
+    letter-spacing: -1px;
+    line-height: 1;
+    display: inline-block;
+  }
+  @keyframes flash-text {
+    0% { color: #FFFFFF; transform: scale(1.05); text-shadow: 0 0 12px rgba(255,255,255,0.8); }
+    100% { color: #0C2340; transform: scale(1); text-shadow: none; }
+  }
+  .price-tag-amount.update-flash {
+    animation: flash-text 0.6s ease-out forwards;
+  }
+  .price-tag-token {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(12, 35, 64, 0.8);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .price-tag-token span {
+    background: #0C2340;
+    color: var(--gold-light);
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  @keyframes box-pulse {
+    0% { transform: scale(1.08); box-shadow: 0 12px 32px rgba(37, 165, 88, 0.5); }
+    100% { transform: scale(1); box-shadow: 0 8px 24px rgba(214, 143, 18, 0.4); }
+  }
+
+  /* Details scroll */
+  .details-scroll {
+    flex: 1;
+    overflow-y: hidden;
+    padding: 0.25rem 1.5rem 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Start Price Box */
+  .start-price-box {
+    background: var(--bg-panel);
+    border-radius: 8px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+  .start-price-label {
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .start-price-value {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--gold);
+    margin-top: 2px;
+  }
+
+  .detail-section {
+    margin-bottom: 0;
+    background: var(--bg-panel);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+  .detail-section-title {
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    border-bottom: none;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .detail-item {
+    background: var(--bg-card);
+    border-radius: 5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+  }
+  .detail-item.full { grid-column: 1 / -1; }
+  .detail-label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .detail-label svg {
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+  .detail-value {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+  .detail-value.highlight { color: var(--gold); }
+  .detail-value.danger { color: var(--red); }
+  .detail-value.success { color: var(--green); }
+  .detail-value.muted { color: var(--text-secondary); font-weight: 500; }
+
+  /* Vehicle Specs (Flat Icon Layout) */
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px 12px;
+    margin-top: 6px;
+    margin-bottom: 8px;
+  }
+  .spec-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .spec-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    object-fit: contain;
+    filter: grayscale(100%) brightness(0);
+  }
+  .spec-info {
+    display: flex;
+    flex-direction: column;
+  }
+  .spec-value {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 500;
+    color: #000000;
+    line-height: 1.2;
+  }
+
+  /* Compact Costs Layout */
+  .cost-list {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .cost-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cost-line:last-child {
+    border-bottom: none;
+  }
+  .cost-line-lbl {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .cost-line-val {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+    text-align: right;
+    line-height: 1.3;
+  }
+  .cost-line.attention {
+    background: rgba(223, 51, 27, 0.08);
+  }
+  .cost-line.attention .cost-line-lbl {
+    color: var(--red);
+  }
+  .cost-line.total-row {
+    background: rgba(214, 143, 18, 0.08);
+  }
+  .cost-line.total-row .cost-line-lbl {
+    color: var(--text-primary);
+    font-weight: 800;
+  }
+  .cost-line.total-row .cost-line-val {
+    font-size: 17px;
+  }
+
+  /* Status chips */
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px; font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+  }
+  .chip svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .chip.good { background: rgba(46,196,106,0.08); color: var(--green); border-color: rgba(46,196,106,0.3); }
+  .chip.warn { background: rgba(232,160,32,0.08); color: var(--gold); border-color: rgba(232,160,32,0.3); }
+  .chip.bad { background: rgba(232,64,42,0.08); color: var(--red); border-color: rgba(232,64,42,0.3); }
+  .chip.neutral { background: rgba(138,150,176,0.08); color: var(--text-secondary); border-color: rgba(138,150,176,0.3); }
+
+  /* NTBT Warning Ribbon */
+  .warning-ribbon {
+    grid-area: ribbon;
+    background: rgba(232, 64, 42, 0.1);
+    border: 1px solid rgba(232,64,42,0.3);
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 2rem;
+    margin: 4px 2rem;
+    border-radius: 8px;
+  }
+  .warning-ribbon-icon {
+    width: 18px; height: 18px; flex-shrink: 0; color: var(--red);
+  }
+  .warning-ribbon-label {
+    font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--red); font-weight: 800;
+    border-right: 1px solid rgba(232,64,42,0.3);
+    padding-right: 12px;
+  }
+  .warning-ribbon-text {
+    font-size: 14px; color: rgba(232,64,42,0.9); font-weight: 600;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    grid-area: footer;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border-gold);
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+    gap: 0;
+  }
+  .footer-divider {
+    width: 1px; height: 32px;
+    background: var(--border);
+    margin: 0 2rem;
+    flex-shrink: 0;
+  }
+  .footer-block { flex-shrink: 0; }
+  .footer-label {
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .footer-value {
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+  }
+  .footer-value.accent { color: var(--gold); }
+  .footer-value.blue { color: var(--blue); }
+  .footer-ids {
+    display: flex; gap: 2.5rem;
+    margin-left: auto;
+  }
+  .footer-id-block { text-align: right; }
+
+  /* Corner decoration */
+  .corner-deco {
+    position: absolute;
+    width: 24px; height: 24px;
+    border-color: var(--gold-dim);
+    border-style: solid;
+    opacity: 0.5;
+  }
+  .corner-deco.tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+  .corner-deco.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+  .corner-deco.bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+  .corner-deco.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+  /* ── LIGHTBOX ── */
+  .lightbox {
+    visibility: hidden; opacity: 0;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    display: flex; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0, 0, 0, 0.92);
+    align-items: center; justify-content: center;
+  }
+  .lightbox.active { visibility: visible; opacity: 1; }
+  .lightbox-content {
+    position: relative; width: 85vw; height: 85vh;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; z-index: 10000;
+  }
+  .lightbox-img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    transition: transform 0.3s ease; transform-origin: center center;
+  }
+  .lightbox-close {
+    position: absolute; top: 25px; right: 35px; z-index: 10001;
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; font-size: 28px; width: 44px; height: 44px; cursor: pointer;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, border-color 0.2s; backdrop-filter: blur(4px);
+  }
+  .lightbox-close:hover { background: var(--red); border-color: var(--red); }
+  .lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 10001;
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff;
+    font-size: 24px; padding: 15px 20px; cursor: pointer; border-radius: 8px;
+    transition: background 0.2s, color 0.2s; backdrop-filter: blur(4px);
+  }
+  .lightbox-nav:hover { background: var(--gold); color: #000; border-color: var(--gold); }
+  .lightbox-nav.prev { left: 30px; }
+  .lightbox-nav.next { right: 30px; }
+  .lightbox-controls {
+    position: absolute; bottom: 30px; z-index: 10001; display: flex; gap: 20px;
+    background: rgba(0,0,0,0.7); padding: 12px 24px; border-radius: 30px;
+    border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px);
+  }
+  .lightbox-controls button {
+    background: none; border: none; color: #fff; font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    font-family: var(--font-display); transition: color 0.2s;
+  }
+  .lightbox-controls button:hover { color: var(--gold); }
+
+  /* ── START OVERLAY ── */
+  .start-overlay {
+    position: fixed; inset: 0; z-index: 9999999;
+    background: rgba(6, 8, 16, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+  .start-overlay.hidden {
+    opacity: 0; visibility: hidden;
+  }
+  .start-btn {
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+    border: none; border-radius: 8px;
+    padding: 20px 40px;
+    font-family: var(--font-display);
+    font-size: 24px; font-weight: 800;
+    color: #0C2340; text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(214, 143, 18, 0.4);
+    transition: transform 0.2s;
+  }
+  .start-btn:hover { transform: scale(1.05); }
+  .start-text {
+    color: #FFF; margin-top: 16px; font-size: 16px; font-weight: 500; opacity: 0.8;
+  }
+
+  /* ── INTRO CURTAIN ── */
+  .intro-curtain {
+    position: fixed; inset: 0; z-index: 999998;
+    background: var(--bg-deep);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: transform 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+  }
+  .intro-curtain.slide-up {
+    transform: translateY(-100%);
+  }
+  .intro-logo {
+    height: 120px; object-fit: contain; margin-bottom: 1.5rem;
+  }
+  .intro-title {
+    font-family: var(--font-display); font-size: 48px; font-weight: 900;
+    color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.05em;
+    text-align: center; margin-bottom: 1rem; text-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .intro-subtitle {
+    font-size: 24px; font-weight: 700; color: var(--gold);
+    text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 1rem;
+  }
+  .intro-speech-box {
+    margin-top: 1rem; max-width: 900px; text-align: center;
+    opacity: 0; visibility: hidden; transition: opacity 1s ease, visibility 1s ease;
+    background: var(--bg-panel); padding: 2rem; border-radius: 12px;
+    border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  }
+  .intro-speech-box.active {
+    opacity: 1; visibility: visible;
+  }
+  .intro-speech-box p {
+    font-size: 16px; color: var(--text-secondary); margin-bottom: 0.8rem; line-height: 1.5;
+  }
+  .intro-speech-box p:last-child { margin-bottom: 0; }
+  .intro-speech-final {
+    font-family: var(--font-display); font-size: 20px !important; font-weight: 700;
+    color: var(--text-primary) !important; margin-top: 1.5rem;
+  }
+  .text-highlight {
+    color: var(--red); font-weight: 800; text-transform: uppercase;
+    background: rgba(223, 51, 27, 0.1); padding: 2px 8px; border-radius: 4px;
+    border: 1px solid rgba(223, 51, 27, 0.4);
+  }
+  .intro-loading {
+    margin-top: 2rem; width: 400px; height: 4px; background: var(--border);
+    border-radius: 2px; overflow: hidden; position: relative;
+  }
+  .intro-bar {
+    position: absolute; top: 0; left: 0; height: 100%; width: 30%;
+    background: var(--gold); border-radius: 2px;
+    animation: introLoad 1.5s infinite ease-in-out;
+  }
+  @keyframes introLoad {
+    0% { left: -30%; }
+    100% { left: 100%; }
+  }
+
+  /* ── WINNER OVERLAY ── */
+  .winner-overlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background: rgba(12, 35, 64, 0.85);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+  }
+  .winner-overlay.active {
+    opacity: 1; visibility: visible;
+  }
+  .winner-card {
+    background: var(--bg-panel);
+    padding: 3.5rem 5rem;
+    border-radius: 20px;
+    border: 2px solid var(--gold);
+    text-align: center;
+    transform: scale(0.8) translateY(30px);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .winner-overlay.active .winner-card {
+    transform: scale(1) translateY(0);
+    animation: winnerGlow 2s infinite alternate;
+  }
+  .winner-close {
+    position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.04);
+    border: none; font-size: 24px; width: 36px; height: 36px; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); transition: 0.2s; z-index: 10;
+  }
+  .winner-close:hover { background: rgba(223, 51, 27, 0.1); color: var(--red); }
+  @keyframes winnerGlow {
+    0% { box-shadow: 0 10px 40px rgba(214, 143, 18, 0.3), inset 0 0 15px rgba(214, 143, 18, 0.05); }
+    100% { box-shadow: 0 15px 60px rgba(214, 143, 18, 0.6), inset 0 0 30px rgba(214, 143, 18, 0.2); }
+  }
+  .winner-badge {
+    display: inline-block; background: var(--green); color: #fff;
+    font-size: 18px; font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase;
+    padding: 8px 24px; border-radius: 30px; margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(37, 165, 88, 0.4);
+  }
+  .winner-title {
+    font-size: 14px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.5rem;
+  }
+  .winner-price {
+    font-family: var(--font-display); font-size: 64px; font-weight: 900; color: var(--gold);
+    line-height: 1; margin-bottom: 2rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.05);
+  }
+  .winner-token-label {
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 0.75rem;
+  }
+  .winner-token {
+    font-family: var(--font-display); font-size: 24px; font-weight: 600; color: var(--text-primary);
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+  }
+  .winner-token span {
+    font-size: 42px; font-weight: 900; color: var(--blue);
+    background: rgba(45, 125, 224, 0.1); padding: 4px 20px; border-radius: 12px;
+    border: 1px solid rgba(45, 125, 224, 0.3);
+  }
+
+  /* ── HAMMER OVERLAY ── */
+  .hammer-overlay {
+    position: fixed; inset: 0; z-index: 99998;
+    background: rgba(12, 35, 64, 0.9);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden; transition: opacity 0.4s;
+  }
+  .hammer-overlay.active { opacity: 1; visibility: visible; }
+  .gavel-container { position: relative; width: 300px; height: 300px; }
+  .gavel-mallet {
+    position: absolute; top: 20px; left: 100px;
+    transform-origin: center bottom; width: 40px; height: 160px;
+  }
+  .gavel-handle {
+    position: absolute; bottom: 0; left: 10px; width: 20px; height: 120px;
+    background: linear-gradient(to right, #A86D00, #D68F12, #A86D00); border-radius: 0 0 10px 10px;
+  }
+  .gavel-head {
+    position: absolute; top: 0; left: -40px; width: 120px; height: 50px;
+    background: linear-gradient(to bottom, #F5C55A, #D68F12); border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+  .gavel-head::before, .gavel-head::after { content: ''; position: absolute; top: -5px; bottom: -5px; width: 15px; background: #4A5470; border-radius: 4px; }
+  .gavel-head::before { left: 15px; } .gavel-head::after { right: 15px; }
+  .gavel-block {
+    position: absolute; bottom: 50px; left: 50px; width: 200px; height: 40px;
+    background: #2A3649; border-radius: 20px 20px 5px 5px; border-bottom: 8px solid #10141C; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+  }
+  .hammer-overlay.banging .gavel-mallet { animation: gavelBang 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+  @keyframes gavelBang {
+    0% { transform: rotate(0deg); } 30% { transform: rotate(-45deg); }
+    50% { transform: rotate(70deg); } 65% { transform: rotate(45deg); }
+    80% { transform: rotate(70deg); } 100% { transform: rotate(70deg); }
+  }
+  .gavel-impact {
+    position: absolute; bottom: 85px; left: 150px; width: 10px; height: 10px; border-radius: 50%; background: #FFF; opacity: 0; z-index: 10;
+  }
+  .hammer-overlay.banging .gavel-impact { animation: gavelSpark 0.7s 0.35s forwards; }
+  @keyframes gavelSpark {
+    0% { opacity: 1; transform: scale(1); box-shadow: 0 0 20px 10px #FFF, 0 0 40px 30px var(--gold); }
+    100% { opacity: 0; transform: scale(3); box-shadow: 0 0 60px 40px #FFF, 0 0 100px 80px var(--gold); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Start Auction Overlay -->
+<div class="start-overlay" id="start-overlay">
+  <button class="start-btn" onclick="startAuctionEvent()">Begin Auction</button>
+  <div class="start-text">Click to enable audio and start the sequence</div>
+</div>
+
+<!-- Intro Curtain Overlay -->
+<div class="intro-curtain" id="intro-curtain">
+  <img src="logo/manpurram_logo.png" alt="Manappuram Finance Logo" class="intro-logo">
+  <h1 class="intro-title">Bank Repossessed Vehicle Auction</h1>
+  <p class="intro-subtitle">Conducted by AutoBazaar Auction</p>
+  
+  <div class="intro-speech-box" id="intro-speech-box">
+    <p>Good morning ladies and gentlemen.</p>
+    <p>Welcome to today’s Bank Repossessed Vehicle Auction conducted by AutoBazaar Auction on behalf of Manappuram Finance Ltd.</p>
+    <p>We thank all dealers, traders, transporters, and individual buyers for participating today.</p>
+    <p>All vehicles in today’s auction are repossessed assets and are being sold on an <span class="text-highlight">As Is Where Is basis</span> according to company terms and conditions.</p>
+    <p>We request all bidders to bid seriously and confidently. Highest bid will be considered for approval by the finance company.</p>
+    <p class="intro-speech-final">Alright ladies and gentlemen, let’s begin the auction!</p>
+  </div>
+
+  <div class="intro-loading">
+    <div class="intro-bar"></div>
+  </div>
+</div>
+
+<div class="screen">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="header-brand">
+      <img class="brand-logo-img" src="logo/manpurram_logo.png" alt="Manappuram Finance Logo">
+    </div>
+
+    <div class="header-center">
+      <div class="lot-label">Current Lot</div>
+      <div class="lot-number">#007 of 042</div>
+    </div>
+
+    <div class="header-right">
+      <div class="header-meta">
+        <div class="header-meta-label">Auction Date</div>
+        <div class="header-meta-value">18 April 2026</div>
+      </div>
+      <div class="header-meta">
+        <div class="header-meta-label">Session</div>
+        <div class="header-meta-value">6:00 PM – 8:00 PM</div>
+      </div>
+      <button class="btn-action btn-stop" id="stop-btn" onclick="toggleAuction()">Stop</button>
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        Live
+      </div>
+    </div>
+  </header>
+
+  <!-- ── WARNING RIBBON ── -->
+  <div class="warning-ribbon">
+    <svg class="warning-ribbon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <div class="warning-ribbon-label">RC Blacklist — NTBT</div>
+    <div class="warning-ribbon-text">Vehicle flagged as Not To Be Transacted by Mumbai, Maharashtra. Verify before bidding.</div>
+  </div>
+
+  <!-- ── IMAGE PANEL ── -->
+  <section class="image-panel">
+    <img class="vehicle-img"
+      src="vehicle_images/Vehicel_1/01.jpg"
+      alt="2022 Maruti Suzuki Celerio XMA+"
+      onerror="this.style.background='#EBEEF4'; this.style.display='block'; this.style.minHeight='100%';"
+    >
+    <div class="image-overlay"></div>
+
+    <!-- Corner decorations -->
+    <div class="corner-deco tl"></div>
+    <div class="corner-deco tr" style="right:80px;"></div>
+    <div class="corner-deco bl"></div>
+
+    <!-- Registration Plate -->
+    <div class="reg-plate">
+      <div class="reg-plate-number">
+        <span>MH 06</span>
+        <span>CD 7705</span>
+      </div>
+    </div>
+
+    <!-- Vehicle Name at bottom of image -->
+    <div class="vehicle-name-overlay">
+      <div class="vehicle-name-main">Hyundai AURA</div>
+      <div class="vehicle-name-sub">1.2 MT Petrol S &nbsp;·&nbsp; Manual &nbsp;·&nbsp; 2022</div>
+    </div>
+
+    <!-- Price Tag Overlay -->
+    <div class="price-tag-overlay">
+      <div class="price-tag-header">
+        <div class="price-tag-label">Current Bid</div>
+        <div class="auctioneer-text" id="auctioneer-text">Accepting Bids...</div>
+      </div>
+      <div class="price-tag-bid">
+        <span class="price-tag-currency">₹</span>
+        <span class="price-tag-amount">2,50,000</span>
+      </div>
+      <div class="price-tag-token">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Bidder Token: <span>15</span>
+      </div>
+    </div>
+
+    <!-- Thumbnail strip -->
+    <div class="thumb-strip">
+      <div class="thumb active">
+        <img src="vehicle_images/Vehicel_1/01.jpg" alt="">
+      </div>
+      <div class="thumb">
+        <img src="vehicle_images/Vehicel_1/02.jpg" alt="">
+      </div>
+      <div class="thumb">
+        <img src="vehicle_images/Vehicel_1/03.jpg" alt="">
+      </div>
+      <div class="thumb-more">+2</div>
+    </div>
+  </section>
+
+  <!-- ── DETAILS PANEL ── -->
+  <aside class="details-panel">
+
+    <!-- Details Scroll -->
+    <div class="details-scroll">
+
+      <!-- Start Price -->
+      <div class="start-price-box">
+        <div class="start-price-label">Start Price</div>
+        <div class="start-price-value">₹2,50,000</div>
+      </div>
+
+      <!-- Vehicle Specs -->
+      <div class="detail-section">
+        <div class="detail-section-title">Vehicle Specifications</div>
+        <div class="spec-grid">
+          <div class="spec-item" title="Repo Date">
+            <img class="spec-icon" src="icons/towing-a-car-svgrepo-com.svg" alt="Repo Date">
+            <div class="spec-info">
+              <div class="spec-value">05 Mar 2024</div>
+            </div>
+          </div>
+          <div class="spec-item" title="Odometer">
+            <img class="spec-icon" src="icons/speedometer.svg" alt="Odometer">
+            <div class="spec-info">
+              <div class="spec-value highlight">10,786 km</div>
+            </div>
+          </div>
+          <div class="spec-item" title="Fuel Type">
+            <img class="spec-icon" src="icons/fuel.svg" alt="Fuel Type">
+            <div class="spec-info">
+              <div class="spec-value">Petrol</div>
+            </div>
+          </div>
+          <div class="spec-item" title="Transmission">
+            <img class="spec-icon" src="icons/vehcile_gear_transmission.svg" alt="Transmission">
+            <div class="spec-info">
+              <div class="spec-value">Manual</div>
+            </div>
+          </div>
+          <div class="spec-item" title="State">
+            <img class="spec-icon" src="icons/map-pin-alt-svgrepo-com.svg" alt="State">
+            <div class="spec-info">
+              <div class="spec-value">Maharashtra</div>
+            </div>
+          </div>
+          <div class="spec-item" title="BS Version">
+            <img class="spec-icon" src="icons/cars_year_of_manufacture.svg" alt="BS Version">
+            <div class="spec-info">
+              <div class="spec-value muted">BS-V</div>
+            </div>
+          </div>
+          <div class="spec-item" title="Fitness Validity">
+            <img class="spec-icon" src="icons/fitness_repair.svg" alt="Fitness Validity">
+            <div class="spec-info">
+              <div class="spec-value muted">N/A</div>
+            </div>
+          </div>
+          <div class="spec-item" title="Permit Validity">
+            <img class="spec-icon" src="icons/permit.svg" alt="Permit Validity">
+            <div class="spec-info">
+              <div class="spec-value muted">N/A</div>
+            </div>
+          </div>
+          <div class="spec-item" title="Insurance">
+            <img class="spec-icon" src="icons/vehicle_insurance_icon.svg" alt="Insurance">
+            <div class="spec-info">
+              <div class="spec-value muted">N/A</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Condition & Flags -->
+      <div class="detail-section">
+        <div class="detail-section-title">Condition &amp; Status</div>
+        <div class="chip-row">
+          <span class="chip good">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Condition: Good
+          </span>
+          <span class="chip neutral">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            1 Owner
+          </span>
+          <span class="chip warn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9.5" y1="12.5" x2="14.5" y2="17.5"></line><line x1="14.5" y1="12.5" x2="9.5" y2="17.5"></line></svg>
+            RC Status: No
+          </span>
+          <span class="chip neutral">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+            Key: No
+          </span>
+        </div>
+      </div>
+
+      <!-- Buyer Costs -->
+      <div class="detail-section">
+        <div class="detail-section-title" style="margin-bottom: 8px;">Additional Costs for Buyer</div>
+        <div class="cost-list">
+          <div class="cost-line">
+            <span class="cost-line-lbl">RTO Charges</span>
+            <span class="cost-line-val">₹5,800</span>
+          </div>
+          <div class="cost-line">
+            <span class="cost-line-lbl">Buyer Fees</span>
+            <span class="cost-line-val">₹2,000</span>
+          </div>
+          <div class="cost-line attention">
+            <span class="cost-line-lbl">Yard Fees (Approx.)</span>
+            <span class="cost-line-val">₹150/Day &nbsp;·&nbsp; ₹24,600</span>
+          </div>
+          <div class="cost-line total-row" title="Does not include the final bid amount">
+            <span class="cost-line-lbl">Total Estimated Costs</span>
+            <span class="cost-line-val">₹32,400</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="footer-block">
+      <div class="footer-label">Auctioneer</div>
+      <div class="footer-value">Manappuram Finance Ltd.</div>
+    </div>
+    <div class="footer-divider"></div>
+    <div class="footer-block">
+      <div class="footer-label">Yard Location</div>
+      <div class="footer-value">Chintamani Automobiles, Mumbai</div>
+    </div>
+    <div class="footer-divider"></div>
+    <div class="footer-block">
+      <div class="footer-label">Total Bids</div>
+      <div class="footer-value accent" id="total-bids-count">7</div>
+    </div>
+    <div class="footer-divider"></div>
+    <div class="footer-block">
+      <div class="footer-label">Unique Bidders</div>
+      <div class="footer-value blue" id="unique-bidders-count">4</div>
+    </div>
+
+    <div class="footer-ids">
+      <div class="footer-id-block">
+        <div class="footer-label">LAN No</div>
+        <div class="footer-value">4534789974</div>
+      </div>
+      <div class="footer-id-block">
+        <div class="footer-label">Chassis No.</div>
+        <div class="footer-value">ABCDEFGHIJKLMNO</div>
+      </div>
+      <div class="footer-id-block">
+        <div class="footer-label">Engine No.</div>
+        <div class="footer-value">ABCDEFGHIJKL</div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- Hammer Animation Overlay -->
+<div class="hammer-overlay" id="hammer-overlay">
+  <div class="gavel-container">
+    <div class="gavel-impact"></div>
+    <div class="gavel-mallet">
+      <div class="gavel-head"></div>
+      <div class="gavel-handle"></div>
+    </div>
+    <div class="gavel-block"></div>
+  </div>
+</div>
+
+<!-- Hammer Audio -->
+<audio id="hammer-sound" preload="auto">
+  <source src="https://www.soundjay.com/misc/sounds/gavel-banging-1.mp3" type="audio/mpeg">
+</audio>
+
+<!-- Winner Announcement Overlay -->
+<div class="winner-overlay" id="winner-overlay">
+  <div class="winner-card">
+    <button class="winner-close" onclick="closeWinnerOverlay()" title="Close to inspect details">&times;</button>
+    <div class="winner-badge">Sold!</div>
+    <div class="winner-title">Final Winning Bid</div>
+    <div class="winner-price">₹3,50,000</div>
+    <div class="winner-token-label">Winner</div>
+    <div class="winner-token">Token No. <span>45</span></div>
+  </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  <button class="lightbox-nav prev" onclick="lbPrev()">&#10094;</button>
+  
+  <div class="lightbox-content">
+    <img src="" alt="Zoomed Vehicle" id="lightbox-img" class="lightbox-img">
+  </div>
+  
+  <button class="lightbox-nav next" onclick="lbNext()">&#10095;</button>
+  
+  <div class="lightbox-controls">
+    <button onclick="lbZoomOut()">- Zoom Out</button>
+    <button onclick="lbZoomIn()">+ Zoom In</button>
+    <button onclick="lbRotateImg()">&#10227; Rotate</button>
+  </div>
+</div>
+
+<script>
+  // Thumbnail switcher & Slideshow
+  const mainImg = document.querySelector('.vehicle-img');
+  let thumbs = document.querySelectorAll('.thumb');
+  let slideIndex = 0;
+  let slideInterval;
+
+  function showSlide(index) {
+    thumbs.forEach(x => x.classList.remove('active'));
+    thumbs[index].classList.add('active');
+    const thumbImg = thumbs[index].querySelector('img');
+    if (thumbImg) {
+      mainImg.src = thumbImg.src;
+    }
+  }
+
+  function nextSlide() {
+    slideIndex = (slideIndex + 1) % thumbs.length;
+    showSlide(slideIndex);
+  }
+
+  function startSlideshow() {
+    slideInterval = setInterval(nextSlide, 4000); // Change image every 4 seconds
+  }
+
+  thumbs.forEach((t, index) => {
+    t.addEventListener('click', () => {
+      slideIndex = index;
+      showSlide(slideIndex);
+      clearInterval(slideInterval);
+      startSlideshow(); // Reset timer on manual click
+    });
+  });
+
+  // Start auto-play and pause on hover
+  startSlideshow();
+  mainImg.addEventListener('mouseenter', () => clearInterval(slideInterval));
+  mainImg.addEventListener('mouseleave', startSlideshow);
+
+  // Function to update the bid and trigger the flash animation
+  function updateCurrentBid(newAmount) {
+    const overlayEl = document.querySelector('.price-tag-overlay');
+    const bidAmountEl = document.querySelector('.price-tag-amount');
+    
+    if (bidAmountEl && overlayEl) {
+      bidAmountEl.textContent = newAmount;
+      
+      // Reset animations
+      overlayEl.classList.remove('update-pulse');
+      bidAmountEl.classList.remove('update-flash');
+      void overlayEl.offsetWidth; // Trigger reflow
+      
+      // Apply animations
+      overlayEl.classList.add('update-pulse');
+      bidAmountEl.classList.add('update-flash');
+    }
+  }
+
+  // Simulate incoming bids for demonstration
+  let currentBidValue = 250000;
+  let totalBidsCount = 7;
+  let targetBidAmount = 350000;
+  let winningToken = 45;
+  let nextBidTicks = 5;
+  let auctionActive = true;
+  let ticksSinceLastBid = 0;
+  let isLowBidScenario = false;
+  let currentVehicleIndex = 0;
+
+  // Convert numbers to Indian format words for TTS (Crores, Lakhs, Thousands)
+  function numberToIndianWords(num) {
+    if (num === 0) return "Zero";
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    
+    function getWords(n) {
+      let str = "";
+      if (n > 19) {
+        str += tens[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + ones[n % 10] : "");
+      } else {
+        str += ones[n];
+      }
+      return str;
+    }
+    
+    let words = "";
+    let crore = Math.floor(num / 10000000); num %= 10000000;
+    let lakh = Math.floor(num / 100000); num %= 100000;
+    let thousand = Math.floor(num / 1000); num %= 1000;
+    let hundred = Math.floor(num / 100); num %= 100;
+    
+    if (crore > 0) words += getWords(crore) + " Crore ";
+    if (lakh > 0) words += getWords(lakh) + " Lakh ";
+    if (thousand > 0) words += getWords(thousand) + " Thousand ";
+    if (hundred > 0) words += getWords(hundred) + " Hundred ";
+    if (num > 0) words += getWords(num);
+    return words.trim();
+  }
+
+  // Auctioneer Voice Function (Browser Web Speech API)
+  function speak(text) {
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) {
+        resolve();
+        return;
+      }
+      
+      window.speechSynthesis.cancel(); // Stop current speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      
+      // Target known Indian male voices explicitly (Ravi/Heera on Windows, Rishi on Mac)
+      const indianMale = voices.find(v => 
+        (v.lang.includes('IN')) && 
+        (v.name.toLowerCase().includes('ravi') || 
+         v.name.toLowerCase().includes('rishi') || 
+         v.name.toLowerCase().includes('heera') || 
+         v.name.toLowerCase().includes('male'))
+      );
+      
+      // Fallback 1: Any Indian voice (might be female, but correct accent)
+      const indianAny = voices.find(v => v.lang.includes('IN'));
+      // Fallback 2: Any English Male voice
+      const fallbackMale = voices.find(v => v.name.toLowerCase().includes('male') && v.lang.includes('en'));
+      
+      utterance.voice = indianMale || indianAny || fallbackMale || voices[0];
+      utterance.rate = 0.95; // Slightly slower, calmer pace
+      utterance.pitch = 0.85; // Deeper pitch for a more authoritative adult male tone
+      
+      utterance.onend = resolve;
+      utterance.onerror = resolve;
+      
+      window.speechSynthesis.speak(utterance);
+    });
+  }
+
+  function closeWinnerOverlay() {
+    document.getElementById('winner-overlay').classList.remove('active');
+  }
+
+  function fireConfetti() {
+    var duration = 4 * 1000;
+    var animationEnd = Date.now() + duration;
+    var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999999 };
+    function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+    var interval = setInterval(function() {
+      var timeLeft = animationEnd - Date.now();
+      if (timeLeft <= 0) return clearInterval(interval);
+      var particleCount = 50 * (timeLeft / duration);
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+      confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+    }, 250);
+  }
+
+  function auctionTick() {
+    if (!auctionActive) return;
+
+    const textEl = document.getElementById('auctioneer-text');
+    ticksSinceLastBid++;
+
+    // Final phase when target is reached
+    if (currentBidValue >= targetBidAmount && !isLowBidScenario) {
+      if (ticksSinceLastBid === 3) {
+        textEl.textContent = "Last call...";
+        speak("Any final advance before I close? Last call at " + numberToIndianWords(currentBidValue));
+      }
+      else if (ticksSinceLastBid === 6) {
+        textEl.textContent = "Going once! 1...";
+        speak("Fair warning ladies and gentlemen... Going once!");
+      }
+      else if (ticksSinceLastBid === 9) {
+        textEl.textContent = "Going twice! 2...";
+        speak("Going twice!");
+      }
+      else if (ticksSinceLastBid === 12) {
+        textEl.textContent = "Third & final! 3...";
+        textEl.classList.add('critical');
+        speak("Last and final call!");
+      } else if (ticksSinceLastBid === 15) {
+        auctionActive = false;
+        clearInterval(auctionInterval);
+        auctionInterval = null;
+        textEl.innerHTML = "SOLD!";
+        textEl.classList.remove('critical');
+        speak("SOLD! Subject to approval by Manappuram Finance Ltd.! Congratulations to token number " + winningToken);
+        
+        // Update Winner Overlay details dynamically
+        document.querySelector('.winner-price').textContent = "₹" + currentBidValue.toLocaleString('en-IN');
+        document.querySelector('.winner-token span').textContent = winningToken;
+
+        // Trigger Hammer
+        const hammerOverlay = document.getElementById('hammer-overlay');
+        hammerOverlay.classList.add('active');
+        setTimeout(() => {
+          hammerOverlay.classList.add('banging');
+          
+          // Play Hammer Sound
+          const hammerAudio = document.getElementById('hammer-sound');
+          if (hammerAudio) hammerAudio.play().catch(e => console.log('Audio blocked by browser.'));
+          
+          setTimeout(() => {
+            hammerOverlay.classList.remove('active');
+            document.getElementById('winner-overlay').classList.add('active');
+            if (!isLowBidScenario) fireConfetti();
+
+                // --- TRANSITION TO NEXT VEHICLE ---
+                setTimeout(() => {
+                  closeWinnerOverlay();
+                  loadNextVehicle();
+                }, 8000); // Wait 8 seconds before switching
+          }, 1200); 
+        }, 300);
+      }
+      return;
+    }
+
+    // Generate next bid
+    if (ticksSinceLastBid >= nextBidTicks) {
+      let increment = isLowBidScenario ? 2000 : 25000; // 2k for bikes, 25k for cars
+      currentBidValue += increment;
+
+      if (currentBidValue >= targetBidAmount && !isLowBidScenario) {
+        currentBidValue = targetBidAmount;
+        document.querySelector('.price-tag-token span').textContent = winningToken;
+      } else {
+        document.querySelector('.price-tag-token span').textContent = Math.floor(Math.random() * 50) + 1;
+      }
+
+      updateCurrentBid(currentBidValue.toLocaleString('en-IN'));
+      totalBidsCount++;
+      document.getElementById('total-bids-count').textContent = totalBidsCount;
+
+      ticksSinceLastBid = 0;
+      if (isLowBidScenario && totalBidsCount >= 2) {
+        nextBidTicks = 9999; // Stop generating new bids
+      } else {
+        nextBidTicks = Math.floor(Math.random() * 8) + 7; // Random delay
+      }
+
+      textEl.textContent = "New Bid! ₹" + currentBidValue.toLocaleString('en-IN');
+      textEl.classList.remove('critical');
+      
+      // Engaging banter for new bids
+      const amountWords = numberToIndianWords(currentBidValue);
+      const receivedPhrases = [
+        "Yes sir! Thank you. " + amountWords + " received.",
+        amountWords + " now.",
+        "Very good bidding ladies and gentlemen. " + amountWords + " now."
+      ];
+      speak(receivedPhrases[Math.floor(Math.random() * receivedPhrases.length)]);
+
+    } else {
+      // Auctioneer chatter between bids
+      if (isLowBidScenario && totalBidsCount >= 2) {
+        if (ticksSinceLastBid === 5) {
+          textEl.textContent = "Waiting for bids...";
+          speak("Ladies and gentlemen, this is a good vehicle with strong resale value. Don’t miss the opportunity.");
+        } else if (ticksSinceLastBid === 12) {
+          textEl.textContent = "Better bid please?";
+          speak("Can we have a better bid please? We are looking for a serious offer… any improvement on the current bid?");
+        } else if (ticksSinceLastBid === 19) {
+          textEl.textContent = "Make it competitive!";
+          speak("Come on bidders, this vehicle is worth much more. Let’s make it competitive. Last chance for a higher bid before we move ahead.");
+        } else if (ticksSinceLastBid === 27) {
+          textEl.textContent = "Final Offers?";
+          textEl.classList.add('critical');
+          speak("If there are no better bids, we may have to pass this vehicle for management approval. Any final offers ladies and gentlemen?");
+        } else if (ticksSinceLastBid === 34) {
+          auctionActive = false;
+          clearInterval(auctionInterval);
+          auctionInterval = null;
+          textEl.innerHTML = "NOTED";
+          textEl.classList.remove('critical');
+          speak("Alright… noted at the current highest bid. Subject to company approval.");
+
+          // Show "Passed / Noted" Overlay
+          document.querySelector('.winner-badge').textContent = "Noted";
+          document.querySelector('.winner-badge').style.background = "var(--gold)";
+          document.querySelector('.winner-title').textContent = "Highest Bid - Subject to Approval";
+          document.querySelector('.winner-price').textContent = "₹" + currentBidValue.toLocaleString('en-IN');
+          document.querySelector('.winner-token span').textContent = document.querySelector('.price-tag-token span').textContent;
+
+          // Trigger Hammer
+          const hammerOverlay = document.getElementById('hammer-overlay');
+          hammerOverlay.classList.add('active');
+          setTimeout(() => {
+            hammerOverlay.classList.add('banging');
+            const hammerAudio = document.getElementById('hammer-sound');
+            if (hammerAudio) hammerAudio.play().catch(e => console.log('Audio blocked.'));
+            
+            setTimeout(() => {
+              hammerOverlay.classList.remove('active');
+              document.getElementById('winner-overlay').classList.add('active');
+              setTimeout(() => { closeWinnerOverlay(); loadNextVehicle(); }, 8000);
+            }, 1200); 
+          }, 300);
+        }
+      } else {
+        let askAmountUI = (currentBidValue + (isLowBidScenario ? 2000 : 25000)).toLocaleString('en-IN');
+        let askAmountTTS = (currentBidValue + (isLowBidScenario ? 2000 : 25000));
+        let askWords = numberToIndianWords(askAmountTTS);
+        
+        if (ticksSinceLastBid === 3) {
+          textEl.textContent = "Looking for ₹" + askAmountUI;
+          const askPhrases = [
+            "Looking for " + askWords + " ladies and gentlemen.",
+            "Can I get " + askWords + "? Just a small increase.",
+            "Don't miss this car for a small difference. Looking for " + askWords + ".",
+            "Only a small jump sir. Can I get " + askWords + "?"
+          ];
+          speak(askPhrases[Math.floor(Math.random() * askPhrases.length)]);
+        }
+        else if (ticksSinceLastBid === 6) {
+          textEl.textContent = "Going once! 1...";
+          speak("Going once!");
+        }
+        else if (ticksSinceLastBid === 9) {
+          textEl.textContent = "Going twice! 2...";
+          speak("Going twice!");
+        }
+        else if (ticksSinceLastBid === 12) {
+          textEl.textContent = "Third & final! 3...";
+          textEl.classList.add('critical');
+          speak("Any final advance? Third and final call!");
+        }
+      }
+    }
+  }
+
+  let auctionInterval = null;
+
+  // Stop / Resume Auction functionality
+  function toggleAuction() {
+    const btn = document.getElementById('stop-btn');
+    const liveBadge = document.querySelector('.live-badge');
+    if (auctionActive) {
+      auctionActive = false;
+      if (auctionInterval) { clearInterval(auctionInterval); auctionInterval = null; }
+      btn.textContent = "Resume";
+      btn.classList.remove('btn-stop');
+      btn.classList.add('btn-resume');
+      if (liveBadge) liveBadge.style.opacity = '0.4';
+      window.speechSynthesis.cancel(); // Instantly cut off current voice
+    } else {
+      auctionActive = true;
+      if (!auctionInterval) auctionInterval = setInterval(auctionTick, 1000);
+      btn.textContent = "Stop";
+      btn.classList.remove('btn-resume');
+      btn.classList.add('btn-stop');
+      if (liveBadge) liveBadge.style.opacity = '1';
+    }
+  }
+
+  // Start Auction Trigger Event
+  function startAuctionEvent() {
+    const overlay = document.getElementById('start-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    
+    setTimeout(async () => {
+      const speechBox = document.getElementById('intro-speech-box');
+      if (speechBox) speechBox.classList.add('active');
+
+      const introText1 = "Good morning ladies and gentlemen. Welcome to today’s Bank Repossessed Vehicle Auction conducted by AutoBazaar Auction on behalf of Manappuram Finance Ltd. We thank all dealers, traders, transporters, and individual buyers for participating today. All vehicles in today’s auction are repossessed assets and are being sold on an As Is Where Is basis according to company terms and conditions. We request all bidders to bid seriously and confidently. Highest bid will be considered for approval by the finance company. Alright ladies and gentlemen, let’s begin the auction!";
+      const introText2 = "First lot, 2022 Hyundai Aura. Excellent family sedan. We are starting the bid at " + numberToIndianWords(currentBidValue);
+      
+      await speak(introText1);
+      
+      // Slide curtain up
+      const introCurtain = document.getElementById('intro-curtain');
+      if (introCurtain) introCurtain.classList.add('slide-up');
+      
+      // Wait for curtain to finish sliding up, then introduce vehicle and start bids
+      setTimeout(async () => {
+        await speak(introText2);
+        if (!auctionInterval) auctionInterval = setInterval(auctionTick, 1000);
+      }, 1200); // Matches the 1.2s CSS transition
+    }, 500);
+  }
+
+  // Simulate unique bidders increasing randomly every 1 to 3 minutes
+  let uniqueBiddersCount = 4;
+  function simulateUniqueBidders() {
+    // Random delay between 60,000ms (1 min) and 180,000ms (3 mins)
+    const delay = Math.floor(Math.random() * 120000) + 60000;
+    setTimeout(() => {
+      uniqueBiddersCount++;
+      const uniqueBiddersEl = document.getElementById('unique-bidders-count');
+      if (uniqueBiddersEl) {
+        uniqueBiddersEl.textContent = uniqueBiddersCount;
+      }
+      simulateUniqueBidders(); // Schedule the next bump
+    }, delay);
+  }
+  simulateUniqueBidders();
+
+  // --- LOAD NEXT VEHICLE LOGIC ---
+  function loadNextVehicle() {
+    currentVehicleIndex++;
+    
+    // Reset winner styling
+    document.querySelector('.winner-badge').textContent = "Sold!";
+    document.querySelector('.winner-badge').style.background = "var(--green)";
+    document.querySelector('.winner-title').textContent = "Final Winning Bid";
+
+    if (currentVehicleIndex === 1) {
+      isLowBidScenario = false;
+      currentBidValue = 380000;
+      targetBidAmount = 450000;
+      winningToken = 7;
+      totalBidsCount = 0;
+      ticksSinceLastBid = 0;
+      auctionActive = true;
+      nextBidTicks = 5;
+
+      // Reset Stop Button State
+      const stopBtn = document.getElementById('stop-btn');
+      if (stopBtn) { stopBtn.textContent = "Stop"; stopBtn.classList.remove('btn-resume'); stopBtn.classList.add('btn-stop'); }
+      const liveBadge = document.querySelector('.live-badge');
+      if (liveBadge) liveBadge.style.opacity = '1';
+
+      // Update Texts
+      document.querySelector('.lot-number').textContent = "#008 of 042";
+      document.querySelector('.vehicle-name-main').textContent = "Mahindra BOLERO PICK UP";
+      document.querySelector('.vehicle-name-sub').textContent = "Manual · 2020 · Diesel";
+      document.querySelector('.start-price-value').textContent = "₹3,75,000";
+      document.querySelector('.reg-plate-number').innerHTML = "<span>MH 02</span><span>FG 2663</span>";
+      
+      // Update Images
+      document.querySelector('.vehicle-img').src = "vehicle_images/Vehicel_2/01.jpg";
+      const thumbStrip = document.querySelector('.thumb-strip');
+      thumbStrip.innerHTML = `
+        <div class="thumb active"><img src="vehicle_images/Vehicel_2/01.jpg" alt=""></div>
+        <div class="thumb"><img src="vehicle_images/Vehicel_2/02.jpg" alt=""></div>
+        <div class="thumb"><img src="vehicle_images/Vehicel_2/03.jpg" alt=""></div>
+        <div class="thumb"><img src="vehicle_images/Vehicel_2/04.jpg" alt=""></div>
+      `;
+
+      // Rebind Slider
+      thumbs = document.querySelectorAll('.thumb');
+      thumbs.forEach((t, index) => {
+        t.addEventListener('click', () => {
+          slideIndex = index;
+          showSlide(slideIndex);
+          clearInterval(slideInterval);
+          startSlideshow();
+        });
+      });
+      lbImages = Array.from(document.querySelectorAll('.thumb img')).map(img => img.src);
+      lbIndex = 0;
+      slideIndex = 0;
+      clearInterval(slideInterval);
+      startSlideshow();
+
+      // Update Specs
+      const specVals = document.querySelectorAll('.spec-value');
+      if (specVals.length >= 6) {
+        specVals[0].textContent = "30 Apr 2026";
+        specVals[2].textContent = "Diesel";
+        specVals[3].textContent = "Manual";
+        specVals[4].textContent = "Maharashtra";
+        specVals[5].textContent = "BS-V";
+      }
+
+      // Update Keys Chip
+      const chips = document.querySelectorAll('.chip');
+      if (chips[3]) {
+        chips[3].innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg> Key: Yes';
+      }
+
+      // Update Footer Values
+      const footerBlocks = document.querySelectorAll('.footer-block .footer-value');
+      if(footerBlocks[1]) footerBlocks[1].textContent = "X ZONE SUREKSHA AGENCY-JALGAON";
+      
+      const idBlocks = document.querySelectorAll('.footer-id-block .footer-value');
+      if(idBlocks[0]) idBlocks[0].textContent = "101SCV001186154";
+      if(idBlocks[1]) idBlocks[1].textContent = "MA1ZU2TBKL1A17763";
+      if(idBlocks[2]) idBlocks[2].textContent = "TBL1A24319";
+
+      // Hide NTBT Warning Ribbon
+      const warningRibbon = document.querySelector('.warning-ribbon');
+      if(warningRibbon) warningRibbon.style.display = 'none';
+
+      // Reset UI Counters
+      updateCurrentBid(currentBidValue.toLocaleString('en-IN'));
+      document.getElementById('total-bids-count').textContent = totalBidsCount;
+      const priceTagToken = document.querySelector('.price-tag-token span');
+      if(priceTagToken) priceTagToken.textContent = "0";
+      const textEl = document.getElementById('auctioneer-text');
+      if(textEl) {
+        textEl.textContent = "Accepting Bids...";
+        textEl.classList.remove('critical');
+      }
+      
+      // Play next vehicle intro, then restart auction
+      const nextIntroText = "Now ladies and gentlemen, moving to our next vehicle. 2020 Mahindra Bolero Pick Up. One of the most trusted commercial vehicles. Let's begin the bidding at " + numberToIndianWords(currentBidValue);
+      speak(nextIntroText).then(() => {
+        if (!auctionInterval) auctionInterval = setInterval(auctionTick, 1000);
+      });
+
+    } else if (currentVehicleIndex === 2) {
+      isLowBidScenario = true;
+      currentBidValue = 45000;
+      targetBidAmount = 65000;
+      winningToken = 0;
+      totalBidsCount = 0;
+      ticksSinceLastBid = 0;
+      auctionActive = true;
+      nextBidTicks = 5;
+
+      // Update Texts
+      document.querySelector('.lot-number').textContent = "#009 of 042";
+      document.querySelector('.vehicle-name-main').textContent = "Suzuki GIXXER SF 150";
+      document.querySelector('.vehicle-name-sub').textContent = "RIDE CONNECT · 2024 · Petrol";
+      document.querySelector('.start-price-value').textContent = "₹45,000";
+      document.querySelector('.reg-plate-number').innerHTML = "<span>AP 40</span><span>ES 4811</span>";
+      
+      // Update Images
+      document.querySelector('.vehicle-img').src = "vehicle_images/Vehicle_3/01.jpg";
+      const thumbStrip = document.querySelector('.thumb-strip');
+      thumbStrip.innerHTML = `
+        <div class="thumb active"><img src="vehicle_images/Vehicle_3/01.jpg" alt=""></div>
+        <div class="thumb"><img src="vehicle_images/Vehicle_3/02.jpg" alt=""></div>
+        <div class="thumb"><img src="vehicle_images/Vehicle_3/03.jpg" alt=""></div>
+      `;
+
+      // Rebind Slider
+      thumbs = document.querySelectorAll('.thumb');
+      thumbs.forEach((t, index) => {
+        t.addEventListener('click', () => { slideIndex = index; showSlide(slideIndex); clearInterval(slideInterval); startSlideshow(); });
+      });
+      lbImages = Array.from(document.querySelectorAll('.thumb img')).map(img => img.src);
+      lbIndex = 0; slideIndex = 0; clearInterval(slideInterval); startSlideshow();
+
+      // Update Specs
+      const specVals = document.querySelectorAll('.spec-value');
+      if (specVals.length >= 6) {
+        specVals[0].textContent = "10 Jan 2026";
+        specVals[2].textContent = "Petrol";
+        specVals[3].textContent = "Manual";
+        specVals[4].textContent = "Andhra Pradesh";
+        specVals[5].textContent = "BS-VI";
+      }
+
+      // Update Footer Values
+      const footerBlocks = document.querySelectorAll('.footer-block .footer-value');
+      if(footerBlocks[1]) footerBlocks[1].textContent = "SHRIRAM AUTOMALL - VIZAG";
+      const idBlocks = document.querySelectorAll('.footer-id-block .footer-value');
+      if(idBlocks[0]) idBlocks[0].textContent = "T08166020125123146";
+      if(idBlocks[1]) idBlocks[1].textContent = "MB8ED11ZHR8123565";
+      if(idBlocks[2]) idBlocks[2].textContent = "BGA4222175";
+
+      // Reset UI Counters
+      updateCurrentBid(currentBidValue.toLocaleString('en-IN'));
+      document.getElementById('total-bids-count').textContent = totalBidsCount;
+      document.querySelector('.price-tag-token span').textContent = "0";
+      document.getElementById('auctioneer-text').textContent = "Accepting Bids...";
+      document.getElementById('auctioneer-text').classList.remove('critical');
+      
+      const nextIntroText = "Now ladies and gentlemen, moving to our next lot. 2024 Suzuki Gixxer SF 150. Excellent sports bike. Let's begin the bidding at " + numberToIndianWords(currentBidValue);
+      speak(nextIntroText).then(() => { if (!auctionInterval) auctionInterval = setInterval(auctionTick, 1000); });
+
+    } else {
+      // Auction Ended Sequence
+      document.getElementById('auctioneer-text').textContent = "Auction Ended";
+      speak("Ladies and gentlemen, that concludes our auction for today. Thank you for participating.");
+    }
+  }
+
+  // Lightbox functionality
+  let lbImages = [];
+  let lbIndex = 0;
+  let lbZoom = 1;
+  let lbRotate = 0;
+
+  // Grab all thumbnail images for the gallery array
+  document.querySelectorAll('.thumb img').forEach(img => lbImages.push(img.src));
+
+  mainImg.addEventListener('click', () => {
+    lbIndex = lbImages.findIndex(src => src === mainImg.src);
+    if (lbIndex === -1) lbIndex = 0;
+    openLightbox();
+  });
+
+  function openLightbox() {
+    document.getElementById('lightbox').classList.add('active');
+    updateLightbox();
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+  }
+  function updateLightbox() {
+    lbZoom = 1; lbRotate = 0;
+    applyLightboxTransform();
+    document.getElementById('lightbox-img').src = lbImages[lbIndex];
+  }
+  function lbPrev() {
+    lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length;
+    updateLightbox();
+  }
+  function lbNext() {
+    lbIndex = (lbIndex + 1) % lbImages.length;
+    updateLightbox();
+  }
+  function lbZoomIn() { lbZoom += 0.25; applyLightboxTransform(); }
+  function lbZoomOut() { lbZoom = Math.max(0.25, lbZoom - 0.25); applyLightboxTransform(); }
+  function lbRotateImg() { lbRotate += 90; applyLightboxTransform(); }
+  function applyLightboxTransform() {
+    document.getElementById('lightbox-img').style.transform = `scale(${lbZoom}) rotate(${lbRotate}deg)`;
+  }
+
+  // Keyboard navigation for Lightbox
+  document.addEventListener('keydown', (e) => {
+    if (document.getElementById('lightbox').classList.contains('active')) {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowRight') lbNext();
+      else if (e.key === 'ArrowLeft') lbPrev();
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        lbZoomIn();
+      }
+      else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        lbZoomOut();
+      }
+    }
+  });
+
+  // Mouse wheel zoom for Lightbox
+  document.getElementById('lightbox').addEventListener('wheel', (e) => {
+    if (document.getElementById('lightbox').classList.contains('active')) {
+      e.preventDefault();
+      if (e.deltaY < 0) lbZoomIn();
+      else lbZoomOut();
+    }
+  }, { passive: false });
+</script>
+</body>
+</html>
