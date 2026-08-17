@@ -1,6 +1,7 @@
 # Offline Vehicle Auction Display System
 
 A dynamic, fully web-based display screen designed for live, in-person vehicle auctions. This system simulates real-time bidding, complete with an automated Web Speech API auctioneer, engaging animations, and automated vehicle transition logic. It is specifically branded for **Manappuram Finance Ltd.** and conducted by **AutoBazaar Auction**.
+A dynamic, fully web-based display screen designed for live, in-person vehicle auctions. This system simulates real-time bidding, complete with an automated Web Speech API auctioneer, engaging animations, and automated vehicle transition logic. It is specifically branded for **ITI Finance Ltd.** and conducted by **AutoBazaar Auction**.
 
 ## 🌟 Key Features
 
@@ -39,7 +40,8 @@ offline_auction_page_V2/
 │
 ├── logo/
 │   └── manpurram_logo.png       # Brand logos
-│
+│   └── iti_finance_logo.png     # ITI Finance Logo
+│   └── autobazaar_logo.png      # AutoBazaar Auction Logo
 ├── icons/
 │   └── *.svg                    # UI icons (specs, condition, etc.)
 │
@@ -56,4 +58,4 @@ offline_auction_page_V2/
 - **Adding Vehicles:** To add more vehicles, extend the `loadNextVehicle()` function logic in `index.html` by creating new `currentVehicleIndex` conditions and mapping them to new image folders.
 
 ---
-*Developed for AutoBazaar & Manappuram Finance Ltd. Offline Auction Events.*
+*Developed for AutoBazaar & ITI Finance Ltd. Offline Auction Events.*

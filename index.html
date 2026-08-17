@@ -673,7 +673,7 @@
     transform: translateY(-100%);
   }
   .intro-logo {
-    height: 120px; object-fit: contain; margin-bottom: 1.5rem;
+    height: 60px; object-fit: contain; margin-bottom: 1.5rem;
   }
   .intro-title {
     font-family: var(--font-display); font-size: 48px; font-weight: 900;
@@ -838,13 +838,16 @@
 
 <!-- Intro Curtain Overlay -->
 <div class="intro-curtain" id="intro-curtain">
-  <img src="logo/manpurram_logo.png" alt="Manappuram Finance Logo" class="intro-logo">
-  <h1 class="intro-title">Bank Repossessed Vehicle Auction</h1>
-  <p class="intro-subtitle">Conducted by AutoBazaar Auction</p>
+  <img src="logo/iti_finance_logo.png" alt="ITI Finance Logo" class="intro-logo"> 
+  <h1 class="intro-title">Vehicle Auction</h1>
+  <div class="intro-conducted-by">
+    <p class="intro-subtitle">Conducted by</p>
+    <img src="logo/autobazaar_logo.png" alt="AutoBazaar Auction Logo" class="autobazaar-logo">
+  </div>
   
   <div class="intro-speech-box" id="intro-speech-box">
     <p>Good morning ladies and gentlemen.</p>
-    <p>Welcome to today’s Bank Repossessed Vehicle Auction conducted by AutoBazaar Auction on behalf of Manappuram Finance Ltd.</p>
+    <p>Welcome to today’s Vehicle Auction conducted by AutoBazaar Auction on behalf of ITI Finance Ltd.</p>
     <p>We thank all dealers, traders, transporters, and individual buyers for participating today.</p>
     <p>All vehicles in today’s auction are repossessed assets and are being sold on an <span class="text-highlight">As Is Where Is basis</span> according to company terms and conditions.</p>
     <p>We request all bidders to bid seriously and confidently. Highest bid will be considered for approval by the finance company.</p>
@@ -856,12 +859,29 @@
   </div>
 </div>
 
+<style>
+  /* New styles for AutoBazaar Logo in Intro Curtain */
+  .intro-conducted-by {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between "Conducted by" text and logo */
+    margin-bottom: 1rem; /* Keep original margin-bottom from intro-subtitle */
+  }
+  .intro-conducted-by .intro-subtitle {
+    margin-bottom: 0; /* Remove margin from p tag inside flex container */
+  }
+  .autobazaar-logo {
+    height: 30px; /* Adjust as needed for proper sizing */
+    object-fit: contain;
+  }
+</style>
+
 <div class="screen">
 
   <!-- ── HEADER ── -->
   <header class="header">
     <div class="header-brand">
-      <img class="brand-logo-img" src="logo/manpurram_logo.png" alt="Manappuram Finance Logo">
+      <img class="brand-logo-img" src="logo/iti_finance_logo.png" alt="ITI Finance Logo">
     </div>
 
     <div class="header-center">
@@ -1078,7 +1098,7 @@
   <footer class="footer">
     <div class="footer-block">
       <div class="footer-label">Auctioneer</div>
-      <div class="footer-value">Manappuram Finance Ltd.</div>
+      <div class="footer-value">ITI Finance Ltd.</div>
     </div>
     <div class="footer-divider"></div>
     <div class="footer-block">
@@ -1343,9 +1363,9 @@
         auctionActive = false;
         clearInterval(auctionInterval);
         auctionInterval = null;
-        textEl.innerHTML = "SOLD!";
+        textEl.innerHTML = "SOLD!"; // This line is already present in the original code
         textEl.classList.remove('critical');
-        speak("SOLD! Subject to approval by Manappuram Finance Ltd.! Congratulations to token number " + winningToken);
+        speak("SOLD! Subject to approval by ITI Finance Ltd.! Congratulations to token number " + winningToken);
         
         // Update Winner Overlay details dynamically
         document.querySelector('.winner-price').textContent = "₹" + currentBidValue.toLocaleString('en-IN');
@@ -1432,7 +1452,7 @@
           auctionActive = false;
           clearInterval(auctionInterval);
           auctionInterval = null;
-          textEl.innerHTML = "NOTED";
+        textEl.innerHTML = "NOTED"; // This line is already present in the original code
           textEl.classList.remove('critical');
           speak("Alright… noted at the current highest bid. Subject to company approval.");
 
@@ -1523,8 +1543,8 @@
       const speechBox = document.getElementById('intro-speech-box');
       if (speechBox) speechBox.classList.add('active');
 
-      const introText1 = "Good morning ladies and gentlemen. Welcome to today’s Bank Repossessed Vehicle Auction conducted by AutoBazaar Auction on behalf of Manappuram Finance Ltd. We thank all dealers, traders, transporters, and individual buyers for participating today. All vehicles in today’s auction are repossessed assets and are being sold on an As Is Where Is basis according to company terms and conditions. We request all bidders to bid seriously and confidently. Highest bid will be considered for approval by the finance company. Alright ladies and gentlemen, let’s begin the auction!";
-      const introText2 = "First lot, 2022 Hyundai Aura. Excellent family sedan. We are starting the bid at " + numberToIndianWords(currentBidValue);
+      const introText1 = "Good morning ladies and gentlemen. Welcome to today’s Vehicle Auction conducted by AutoBazaar Auction on behalf of ITI Finance Ltd. We thank all dealers, traders, transporters, and individual buyers for participating today. All vehicles in today’s auction are repossessed assets and are being sold on an As Is Where Is basis according to company terms and conditions. We request all bidders to bid seriously and confidently. Highest bid will be considered for approval by the finance company. Alright ladies and gentlemen, let’s begin the auction!";
+      const introText2 = "First lot, 2022 Hyundai Aura. Excellent family sedan. We are starting the bid at " + numberToIndianWords(currentBidValue) + ".";
       
       await speak(introText1);
       
@@ -1635,7 +1655,7 @@
       if(footerBlocks[1]) footerBlocks[1].textContent = "X ZONE SUREKSHA AGENCY-JALGAON";
       
       const idBlocks = document.querySelectorAll('.footer-id-block .footer-value');
-      if(idBlocks[0]) idBlocks[0].textContent = "101SCV001186154";
+      if(idBlocks[0]) idBlocks[0].textContent = "101SCV001186154"; // This line is already present in the original code
       if(idBlocks[1]) idBlocks[1].textContent = "MA1ZU2TBKL1A17763";
       if(idBlocks[2]) idBlocks[2].textContent = "TBL1A24319";
 
@@ -1708,8 +1728,8 @@
       const footerBlocks = document.querySelectorAll('.footer-block .footer-value');
       if(footerBlocks[1]) footerBlocks[1].textContent = "SHRIRAM AUTOMALL - VIZAG";
       const idBlocks = document.querySelectorAll('.footer-id-block .footer-value');
-      if(idBlocks[0]) idBlocks[0].textContent = "T08166020125123146";
       if(idBlocks[1]) idBlocks[1].textContent = "MB8ED11ZHR8123565";
+      if(idBlocks[1]) idBlocks[1].textContent = "MB8ED11ZHR8123565"; // This line is already present in the original code
       if(idBlocks[2]) idBlocks[2].textContent = "BGA4222175";
 
       // Reset UI Counters
